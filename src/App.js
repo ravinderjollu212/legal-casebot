@@ -1,25 +1,320 @@
-import logo from './logo.svg';
-import './App.css';
+import { useState, useEffect, useCallback, useRef } from 'react'
+import {
+  Typography,
+  Container,
+  Button,
+  IconButton,
+  Paper,
+  Box,
+  useTheme
+} from '@mui/material'
+import * as pdfjsLib from 'pdfjs-dist'
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.entry'
+import UploadSection from './components/UploadSection'
+import ChatAssistant from './components/ChatAssistant'
+import SummarySection from './components/SummarySection'
+import DraftOutput from './components/DraftOutput'
+import DraftHistoryList from './components/DraftHistoryList'
+import HeaderBar from './components/HeaderBar'
+import * as api from './services/apiService'
+import { useSnackbar } from 'notistack'
+import CloseIcon from '@mui/icons-material/Close'
+import { convertToHtml } from './utils/textUtils'
+import { getCombinedFileText } from './utils/ocrUtils'
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
 
-function App() {
+const draftTypes = [
+  'Quash Petition',
+  'Bail Application',
+  'Discharge Application',
+  'Case Summary'
+]
+
+const App = ({ darkMode, setDarkMode }) => {
+  const theme = useTheme()
+  const { enqueueSnackbar, closeSnackbar } = useSnackbar()
+  const [files, setFiles] = useState([])
+  const [combinedPreview, setCombinedPreview] = useState('')
+  const [draft, setDraft] = useState('')
+  const [draftType, setDraftType] = useState(draftTypes[0])
+  const [isParsed, setIsParsed] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [question, setQuestion] = useState('')
+  const [answer, setAnswer] = useState('')
+  const [chatHistory, setChatHistory] = useState([])
+  const [summary, setSummary] = useState('')
+  const [flaws, setFlaws] = useState('')
+  const [history, setHistory] = useState([])
+  const [page, setPage] = useState(1)
+  const [sortDesc, setSortDesc] = useState(true)
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
+
+  const draftRef = useRef(null)
+
+  useEffect(() => {
+    if (draft.trim()) {
+      draftRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [draft])
+
+  const showMessage = useCallback((type, message) => {
+    enqueueSnackbar(message, {
+      variant: type,
+      action: key => (
+        <IconButton onClick={() => closeSnackbar(key)} color="inherit">
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      )
+    })
+  }, [enqueueSnackbar, closeSnackbar])
+
+  const handleAxiosError = useCallback((err, fallback = '❌ Something went wrong.') => {
+    const msg = err.response?.data?.error || err.message || fallback
+    showMessage('error', msg)
+    console.error('[Backend Error]', msg)
+  }, [showMessage])
+
+  const fetchHistory = useCallback(async () => {
+    try {
+      const res = await api.getHistory()
+      const sorted = [...res.data.history].sort((a, b) =>
+        sortDesc
+          ? new Date(b.createdAt) - new Date(a.createdAt)
+          : new Date(a.createdAt) - new Date(b.createdAt)
+      )
+      setHistory(sorted)
+      setPage(1)
+    } catch {
+      console.warn('⚠️ Failed to fetch draft history.')
+    }
+  }, [sortDesc])
+
+  useEffect(() => {
+    fetchHistory()
+  }, [fetchHistory])
+
+
+  const handleFileChange = async (selectedFiles) => {
+    const filesArray = Array.from(selectedFiles)
+    setFiles(filesArray)
+    setIsParsed(false)
+    setDraft('')
+    setAnswer('')
+    showMessage('info', `📎 ${filesArray.length} file(s) selected.`)
+
+    try {
+      setLoading(true)
+      const combinedText = await getCombinedFileText(filesArray, showMessage)
+      setCombinedPreview(combinedText)
+    } catch (err) {
+      handleAxiosError(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+
+  const uploadFile = async () => {
+    if (!files.length) return showMessage('error', '📎 No files selected.')
+    const formData = new FormData()
+    files.forEach(file => formData.append('documents', file))
+
+    try {
+      setLoading(true)
+      await api.uploadDocuments(formData)
+      setIsParsed(true)
+      showMessage('success', '✅ Files uploaded and parsed.')
+    } catch (err) {
+      handleAxiosError(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const generateDraft = async () => {
+    if (!isParsed) return showMessage('error', '📄 Upload and parse the file first.')
+    try {
+      setLoading(true)
+      const res = await api.generateDraft(draftType)
+      setDraft(convertToHtml(res.data.draft))
+      await fetchHistory()
+    } catch (err) {
+      handleAxiosError(err)
+      setDraft('⚠️ Draft generation failed.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const askCaseQuestion = async () => {
+    if (!question.trim()) return showMessage('error', '❓ Please enter a question.')
+    try {
+      setLoading(true)
+      const res = await api.askCaseQuestion(question)
+      setAnswer(res.data.answer)
+      setChatHistory(prev => [...prev, { role: 'user', content: question }, { role: 'bot', content: res.data.answer }])
+      setQuestion('')
+    } catch (err) {
+      handleAxiosError(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const summarizeCase = async () => {
+    try {
+      setLoading(true)
+      const res = await api.summarizeCase()
+      setSummary(res.data.summary)
+      showMessage('success', '📝 Case summarized.')
+    } catch (err) {
+      handleAxiosError(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const detectFlaws = async () => {
+    try {
+      setLoading(true)
+      const res = await api.detectLegalFlaws()
+      setFlaws(res.data.flaws)
+      showMessage('info', '🔍 Flaws detected.')
+    } catch (err) {
+      handleAxiosError(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const downloadElegantPDF = async () => {
+    if (!draft.trim()) return showMessage('error', '❗ Draft is empty.')
+    try {
+      const res = await api.downloadDraftPDF(draftType, draft)
+      const blob = new Blob([res.data], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `${draftType.replace(/\s+/g, '_')}.pdf`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (err) {
+      handleAxiosError(err)
+    }
+  }
+
+  const deleteDraft = useCallback(async (id) => {
+    try {
+      await api.deleteDraftById(id)
+      showMessage('success', '🗑️ Draft deleted.')
+      await fetchHistory()
+    } catch (err) {
+      handleAxiosError(err)
+    }
+  }, [fetchHistory, handleAxiosError, showMessage])
+
+  const loadDraftFromHistory = useCallback(async (id) => {
+    try {
+      setLoading(true)
+      const res = await api.getDraft(id)
+      setDraft(res.data.draft)
+      setDraftType(res.data.draftType)
+      showMessage('info', '🕘 Draft loaded from history.')
+    } catch (err) {
+      handleAxiosError(err)
+    } finally {
+      setLoading(false)
+    }
+  }, [handleAxiosError, showMessage])
+
+  const downloadFromHistory = useCallback(async (id, type) => {
+    try {
+      const res = await api.getDraft(id)
+      const pdfRes = await api.downloadDraftPDF(type, res.data.draft)
+      const blob = new Blob([pdfRes.data], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `${type.replace(/\s+/g, '_')}.pdf`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (err) {
+      handleAxiosError(err)
+    }
+  }, [handleAxiosError])
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+    <>
+      <HeaderBar darkMode={darkMode} toggleDarkMode={() => setDarkMode(!darkMode)} />
+      <Container maxWidth="md" sx={{ mt: 4, mb: 10 }}>
+        <Paper elevation={3} sx={{ p: 3, borderRadius: 3, bgcolor: theme.palette.background.paper }}>
+          <UploadSection
+            loading={loading}
+            handleFileChange={handleFileChange}
+            uploadFile={uploadFile}
+            draftType={draftType}
+            setDraftType={setDraftType}
+            draftTypes={draftTypes}
+            filePreview={combinedPreview}
+            generateDraft={generateDraft}
+            isParsed={isParsed}
+            files={files}
+          />
+        </Paper>
+
+        <SummarySection
+          isParsed={isParsed}
+          loading={loading}
+          summarizeCase={summarizeCase}
+          summary={summary}
+          detectFlaws={detectFlaws}
+          flaws={flaws}
+          darkMode={darkMode}
+        />
+
+        <DraftOutput
+          draftType={draftType}
+          draft={draft}
+          setDraft={setDraft}
+          downloadElegantPDF={downloadElegantPDF}
+          loading={loading}
+          darkMode={darkMode}
+          ref={draftRef}
+        />
+
+        <ChatAssistant
+          chatHistory={chatHistory}
+          question={question}
+          setQuestion={setQuestion}
+          askCaseQuestion={askCaseQuestion}
+          loading={loading}
+          darkMode={darkMode}
+        />
+
+        <Box mt={6}>
+          <Typography variant="h6" gutterBottom>📚 Saved Draft History</Typography>
+          <Button size="small" onClick={() => setSortDesc(prev => !prev)} sx={{ mb: 2 }}>
+            Sort: {sortDesc ? 'Newest First 🔽' : 'Oldest First 🔼'}
+          </Button>
+          <DraftHistoryList
+            history={history}
+            answer={answer}
+            page={page}
+            totalPages={Math.ceil(history.length / 5)}
+            onEdit={loadDraftFromHistory}
+            onDownload={downloadFromHistory}
+            onDelete={deleteDraft}
+            onPageChange={setPage}
+          />
+        </Box>
+      </Container>
+    </>
+  )
 }
 
-export default App;
+export default App

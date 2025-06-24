@@ -36,3 +36,30 @@
     transform: rotate(360deg);
   }
 }
+
+/* App.css or global styles */
+
+.ql-toolbar.ql-snow {
+  background-color: #1e1e1e; /* dark background */
+  border-color: #555;
+  color: #fff;
+}
+
+.ql-toolbar.ql-snow .ql-picker-label,
+.ql-toolbar.ql-snow .ql-stroke {
+  color: #fff;
+  stroke: #fff;
+  fill: #fff;
+}
+
+.ql-container.ql-snow {
+  background-color: #121212;
+  border-color: #555;
+  color: #e0e0e0;
+}
+
+.ql-editor {
+  min-height: 250px;
+  color: #e0e0e0;
+}
+

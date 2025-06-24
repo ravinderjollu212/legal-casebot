@@ -1,17 +1,48 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css';
-import App from './App';
-import reportWebVitals from './reportWebVitals';
+import React, { useMemo, useState } from 'react'
+import ReactDOM from 'react-dom/client'
+import './index.css'
+import App from './App'
+import reportWebVitals from './reportWebVitals'
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+import { ThemeProvider, createTheme, CssBaseline } from '@mui/material'
+import { SnackbarProvider } from 'notistack'
+
+const Root = () => {
+  const [darkMode, setDarkMode] = useState(true)
+
+  const theme = useMemo(() =>
+    createTheme({
+      palette: {
+        mode: darkMode ? 'dark' : 'light',
+        primary: {
+          main: '#1976d2',
+        },
+        background: {
+          default: darkMode ? '#121212' : '#f4f4f4',
+        }
+      }
+    }), [darkMode]
+  )
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <SnackbarProvider
+        maxSnack={3}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        autoHideDuration={3000}
+      >
+        <App darkMode={darkMode} setDarkMode={setDarkMode} />
+      </SnackbarProvider>
+    </ThemeProvider>
+  )
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'))
 root.render(
   <React.StrictMode>
-    <App />
+    <Root />
   </React.StrictMode>
-);
+)
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
+reportWebVitals()
