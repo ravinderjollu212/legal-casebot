@@ -20,8 +20,8 @@ export const downloadDraftPDF = (type, content) =>
 export const uploadDocuments = (formData) =>
   axios.post(API_ENDPOINTS.uploadFile, formData)
 
-export const askCaseQuestion = (question) =>
-  axios.post(API_ENDPOINTS.ask, { question })
+export const askCaseQuestion = (question, history = []) =>
+  axios.post(API_ENDPOINTS.ask, { question, history })
 
 export const summarizeCase = () =>
   axios.post(API_ENDPOINTS.summarize)

@@ -1,18 +1,75 @@
-import { Box, Typography, TextField, Button, Paper } from '@mui/material'
+import { useState, useRef } from 'react'
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Paper,
+  IconButton,
+  Tooltip
+} from '@mui/material'
+import MicIcon from '@mui/icons-material/Mic'
+import StopIcon from '@mui/icons-material/Stop'
 
-const ChatAssistant = ({ chatHistory, question, setQuestion, askCaseQuestion, loading, darkMode }) => {
+const ChatAssistant = ({
+  chatHistory,
+  question,
+  setQuestion,
+  askCaseQuestion,
+  loading,
+  darkMode
+}) => {
+  const [isListening, setIsListening] = useState(false)
+  const recognitionRef = useRef(null)
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      if (!loading && question.trim()) {
-        askCaseQuestion()
-      }
+      if (!loading && question.trim()) askCaseQuestion()
     }
+  }
+
+  const startListening = () => {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      alert('Speech recognition is not supported in this browser.')
+      return
+    }
+
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition
+    const recognition = new SpeechRecognition()
+
+    recognition.lang = 'en-IN'
+    recognition.interimResults = false
+    recognition.continuous = false
+
+    recognition.onstart = () => setIsListening(true)
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript
+      setQuestion((prev) => (prev ? `${prev} ${transcript}` : transcript))
+    }
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error)
+    }
+
+    recognition.onend = () => setIsListening(false)
+
+    recognitionRef.current = recognition
+    recognition.start()
+  }
+
+  const stopListening = () => {
+    recognitionRef.current?.stop()
+    setIsListening(false)
   }
 
   return (
     <Box mt={6}>
-      <Typography variant="h5" gutterBottom>💬 Case Assistant</Typography>
+      <Typography variant="h5" gutterBottom>
+        💬 Case Assistant
+      </Typography>
 
       <Paper elevation={3} sx={{ p: 2, borderRadius: 2 }}>
         <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
@@ -26,19 +83,34 @@ const ChatAssistant = ({ chatHistory, question, setQuestion, askCaseQuestion, lo
             minRows={1}
             maxRows={4}
           />
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={askCaseQuestion}
-            disabled={loading || !question.trim()}
-          >
-            Ask
-          </Button>
+
+          <Box display="flex" alignItems="center" gap={1}>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={askCaseQuestion}
+              disabled={loading || !question.trim()}
+            >
+              Ask
+            </Button>
+            <Tooltip title={isListening ? 'Stop Listening' : 'Start Voice Input'}>
+              <IconButton
+                onClick={isListening ? stopListening : startListening}
+                color={isListening ? 'error' : 'primary'}
+              >
+                {isListening ? <StopIcon /> : <MicIcon />}
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Box>
 
         {chatHistory.length > 0 && (
           <Box mt={3}>
-            <Typography variant="subtitle1" gutterBottom sx={{ color: darkMode ? '#ddd' : undefined }}>
+            <Typography
+              variant="subtitle1"
+              gutterBottom
+              sx={{ color: darkMode ? '#ddd' : undefined }}
+            >
               🧠 AI Responses:
             </Typography>
             <Box
@@ -56,7 +128,10 @@ const ChatAssistant = ({ chatHistory, question, setQuestion, askCaseQuestion, lo
             >
               {chatHistory.map((msg, idx) => (
                 <Box key={idx} mb={2}>
-                  <Typography fontWeight="bold" color={msg.role === 'user' ? 'primary' : 'secondary'}>
+                  <Typography
+                    fontWeight="bold"
+                    color={msg.role === 'user' ? 'primary' : 'secondary'}
+                  >
                     {msg.role === 'user' ? '👤 You:' : '🤖 AI:'}
                   </Typography>
                   <Typography whiteSpace="pre-wrap">{msg.content}</Typography>

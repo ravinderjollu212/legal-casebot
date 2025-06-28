@@ -153,9 +153,10 @@ const App = ({ darkMode, setDarkMode }) => {
     if (!question.trim()) return showMessage('error', '❓ Please enter a question.')
     try {
       setLoading(true)
-      const res = await api.askCaseQuestion(question)
-      setAnswer(res.data.answer)
-      setChatHistory(prev => [...prev, { role: 'user', content: question }, { role: 'bot', content: res.data.answer }])
+      const res = await api.askCaseQuestion(question, chatHistory)
+      const answer = res.data.answer
+      setAnswer(answer)
+      setChatHistory(prev => [...prev, { role: 'user', content: question }, { role: 'assistant', content: answer }])
       setQuestion('')
     } catch (err) {
       handleAxiosError(err)
