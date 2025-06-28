@@ -1,4 +1,3 @@
-// components/DraftSelector.js
 import { Box, FormControl, InputLabel, Select, MenuItem } from '@mui/material'
 
 const DraftSelector = ({ draftType, setDraftType, draftTypes }) => (

@@ -2,25 +2,28 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Typography,
   Container,
-  Button,
   IconButton,
-  Paper,
   Box,
-  useTheme
+  Button,
+  useTheme,
+  Paper
 } from '@mui/material'
 import * as pdfjsLib from 'pdfjs-dist'
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.entry'
-import UploadSection from './components/UploadSection'
-import ChatAssistant from './components/ChatAssistant'
-import SummarySection from './components/SummarySection'
-import DraftOutput from './components/DraftOutput'
-import DraftHistoryList from './components/DraftHistoryList'
-import HeaderBar from './components/HeaderBar'
-import * as api from './services/apiService'
-import { useSnackbar } from 'notistack'
 import CloseIcon from '@mui/icons-material/Close'
+import { useSnackbar } from 'notistack'
+
+import HeaderBar from './components/HeaderBar'
+import UploadSection from './components/UploadSection'
+import DraftWorkflowSection from './components/DraftWorkflowSection'
+import SummarySection from './components/SummarySection'
+import ChatAssistant from './components/ChatAssistant'
+import DraftHistoryList from './components/DraftHistoryList'
+
+import * as api from './services/apiService'
 import { convertToHtml } from './utils/textUtils'
 import { getCombinedFileText } from './utils/ocrUtils'
+
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
 
 const draftTypes = [
@@ -33,23 +36,29 @@ const draftTypes = [
 const App = ({ darkMode, setDarkMode }) => {
   const theme = useTheme()
   const { enqueueSnackbar, closeSnackbar } = useSnackbar()
+
   const [files, setFiles] = useState([])
   const [combinedPreview, setCombinedPreview] = useState('')
   const [draft, setDraft] = useState('')
   const [draftType, setDraftType] = useState(() => localStorage.getItem('draftType') || draftTypes[0])
   const [isParsed, setIsParsed] = useState(false)
+
   const [loadingDraft, setLoadingDraft] = useState(false)
-  const [loadingUpload, setLoadingUpload] = useState(false)
   const [loadingSummary, setLoadingSummary] = useState(false)
   const [loadingChat, setLoadingChat] = useState(false)
+  const [loadingUpload, setLoadingUpload] = useState(false)
+  const [loadingGenerate, setLoadingGenerate] = useState(false)
+
   const [question, setQuestion] = useState('')
-  const [answer, setAnswer] = useState('')
   const [chatHistory, setChatHistory] = useState([])
+
   const [summary, setSummary] = useState('')
   const [flaws, setFlaws] = useState('')
+
   const [history, setHistory] = useState([])
   const [page, setPage] = useState(1)
   const [sortDesc, setSortDesc] = useState(true)
+
   const draftRef = useRef(null)
 
   useEffect(() => {
@@ -96,12 +105,11 @@ const App = ({ darkMode, setDarkMode }) => {
     fetchHistory()
   }, [fetchHistory])
 
-  const handleFileChange = async (selectedFiles) => {
+  const handleFileChange = async selectedFiles => {
     const filesArray = Array.from(selectedFiles)
     setFiles(filesArray)
     setIsParsed(false)
     setDraft('')
-    setAnswer('')
     showMessage('info', `📎 ${filesArray.length} file(s) selected.`)
 
     try {
@@ -117,6 +125,7 @@ const App = ({ darkMode, setDarkMode }) => {
 
   const uploadFile = async () => {
     if (!files.length) return showMessage('error', '📎 No files selected.')
+
     const formData = new FormData()
     files.forEach(file => formData.append('documents', file))
 
@@ -134,8 +143,9 @@ const App = ({ darkMode, setDarkMode }) => {
 
   const generateDraft = async () => {
     if (!isParsed) return showMessage('error', '📄 Upload and parse the file first.')
+
     try {
-      setLoadingDraft(true)
+      setLoadingGenerate(true)
       const res = await api.generateDraft(draftType)
       setDraft(convertToHtml(res.data.draft))
       await fetchHistory()
@@ -143,17 +153,17 @@ const App = ({ darkMode, setDarkMode }) => {
       handleAxiosError(err)
       setDraft('⚠️ Draft generation failed.')
     } finally {
-      setLoadingDraft(false)
+      setLoadingGenerate(false)
     }
   }
 
   const askCaseQuestion = async () => {
     if (!question.trim()) return showMessage('error', '❓ Please enter a question.')
+
     try {
       setLoadingChat(true)
       const res = await api.askCaseQuestion(question, chatHistory)
       const answer = res.data.answer
-      setAnswer(answer)
       setChatHistory(prev => [...prev, { role: 'user', content: question }, { role: 'assistant', content: answer }])
       setQuestion('')
     } catch (err) {
@@ -191,6 +201,7 @@ const App = ({ darkMode, setDarkMode }) => {
 
   const downloadElegantPDF = async () => {
     if (!draft.trim()) return showMessage('error', '❗ Draft is empty.')
+
     try {
       const res = await api.downloadDraftPDF(draftType, draft)
       const blob = new Blob([res.data], { type: 'application/pdf' })
@@ -206,7 +217,7 @@ const App = ({ darkMode, setDarkMode }) => {
     }
   }
 
-  const deleteDraft = useCallback(async (id) => {
+  const deleteDraft = useCallback(async id => {
     try {
       await api.deleteDraftById(id)
       showMessage('success', '🗑️ Draft deleted.')
@@ -216,7 +227,7 @@ const App = ({ darkMode, setDarkMode }) => {
     }
   }, [fetchHistory, handleAxiosError, showMessage])
 
-  const loadDraftFromHistory = useCallback(async (id) => {
+  const loadDraftFromHistory = useCallback(async id => {
     try {
       setLoadingDraft(true)
       const res = await api.getDraft(id)
@@ -250,21 +261,43 @@ const App = ({ darkMode, setDarkMode }) => {
   return (
     <>
       <HeaderBar darkMode={darkMode} toggleDarkMode={() => setDarkMode(!darkMode)} />
+
       <Container maxWidth="md" sx={{ mt: 4, mb: 10 }}>
         <Paper elevation={3} sx={{ p: 3, borderRadius: 3, bgcolor: theme.palette.background.paper }}>
           <UploadSection
-            loading={loadingUpload}
+            loadingUpload={loadingUpload}
+            loadingGenerate={loadingGenerate}
             handleFileChange={handleFileChange}
             uploadFile={uploadFile}
             draftType={draftType}
             setDraftType={setDraftType}
             draftTypes={draftTypes}
-            filePreview={combinedPreview}
+            combinedPreview={combinedPreview}
             generateDraft={generateDraft}
             isParsed={isParsed}
             files={files}
           />
         </Paper>
+
+        <DraftWorkflowSection
+          loadingUpload={loadingUpload}
+          loadingGenerate={loadingGenerate}
+          loadingDraft={loadingDraft}
+          handleFileChange={handleFileChange}
+          uploadFile={uploadFile}
+          files={files}
+          combinedPreview={combinedPreview}
+          draftType={draftType}
+          setDraftType={setDraftType}
+          draftTypes={draftTypes}
+          generateDraft={generateDraft}
+          isParsed={isParsed}
+          draft={draft}
+          setDraft={setDraft}
+          downloadElegantPDF={downloadElegantPDF}
+          darkMode={darkMode}
+          ref={draftRef}
+        />
 
         <SummarySection
           isParsed={isParsed}
@@ -274,16 +307,6 @@ const App = ({ darkMode, setDarkMode }) => {
           detectFlaws={detectFlaws}
           flaws={flaws}
           darkMode={darkMode}
-        />
-
-        <DraftOutput
-          draftType={draftType}
-          draft={draft}
-          setDraft={setDraft}
-          downloadElegantPDF={downloadElegantPDF}
-          loading={loadingDraft}
-          darkMode={darkMode}
-          ref={draftRef}
         />
 
         <ChatAssistant
@@ -303,7 +326,6 @@ const App = ({ darkMode, setDarkMode }) => {
 
           <DraftHistoryList
             history={history}
-            answer={answer}
             page={page}
             totalPages={Math.ceil(history.length / 5)}
             onEdit={loadDraftFromHistory}
