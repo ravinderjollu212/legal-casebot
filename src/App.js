@@ -36,9 +36,12 @@ const App = ({ darkMode, setDarkMode }) => {
   const [files, setFiles] = useState([])
   const [combinedPreview, setCombinedPreview] = useState('')
   const [draft, setDraft] = useState('')
-  const [draftType, setDraftType] = useState(draftTypes[0])
+  const [draftType, setDraftType] = useState(() => localStorage.getItem('draftType') || draftTypes[0])
   const [isParsed, setIsParsed] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [loadingDraft, setLoadingDraft] = useState(false)
+  const [loadingUpload, setLoadingUpload] = useState(false)
+  const [loadingSummary, setLoadingSummary] = useState(false)
+  const [loadingChat, setLoadingChat] = useState(false)
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [chatHistory, setChatHistory] = useState([])
@@ -47,18 +50,15 @@ const App = ({ darkMode, setDarkMode }) => {
   const [history, setHistory] = useState([])
   const [page, setPage] = useState(1)
   const [sortDesc, setSortDesc] = useState(true)
+  const draftRef = useRef(null)
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
-  const draftRef = useRef(null)
-
   useEffect(() => {
-    if (draft.trim()) {
-      draftRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [draft])
+    localStorage.setItem('draftType', draftType)
+  }, [draftType])
 
   const showMessage = useCallback((type, message) => {
     enqueueSnackbar(message, {
@@ -96,7 +96,6 @@ const App = ({ darkMode, setDarkMode }) => {
     fetchHistory()
   }, [fetchHistory])
 
-
   const handleFileChange = async (selectedFiles) => {
     const filesArray = Array.from(selectedFiles)
     setFiles(filesArray)
@@ -106,16 +105,15 @@ const App = ({ darkMode, setDarkMode }) => {
     showMessage('info', `📎 ${filesArray.length} file(s) selected.`)
 
     try {
-      setLoading(true)
+      setLoadingUpload(true)
       const combinedText = await getCombinedFileText(filesArray, showMessage)
       setCombinedPreview(combinedText)
     } catch (err) {
       handleAxiosError(err)
     } finally {
-      setLoading(false)
+      setLoadingUpload(false)
     }
   }
-
 
   const uploadFile = async () => {
     if (!files.length) return showMessage('error', '📎 No files selected.')
@@ -123,21 +121,21 @@ const App = ({ darkMode, setDarkMode }) => {
     files.forEach(file => formData.append('documents', file))
 
     try {
-      setLoading(true)
+      setLoadingUpload(true)
       await api.uploadDocuments(formData)
       setIsParsed(true)
       showMessage('success', '✅ Files uploaded and parsed.')
     } catch (err) {
       handleAxiosError(err)
     } finally {
-      setLoading(false)
+      setLoadingUpload(false)
     }
   }
 
   const generateDraft = async () => {
     if (!isParsed) return showMessage('error', '📄 Upload and parse the file first.')
     try {
-      setLoading(true)
+      setLoadingDraft(true)
       const res = await api.generateDraft(draftType)
       setDraft(convertToHtml(res.data.draft))
       await fetchHistory()
@@ -145,14 +143,14 @@ const App = ({ darkMode, setDarkMode }) => {
       handleAxiosError(err)
       setDraft('⚠️ Draft generation failed.')
     } finally {
-      setLoading(false)
+      setLoadingDraft(false)
     }
   }
 
   const askCaseQuestion = async () => {
     if (!question.trim()) return showMessage('error', '❓ Please enter a question.')
     try {
-      setLoading(true)
+      setLoadingChat(true)
       const res = await api.askCaseQuestion(question, chatHistory)
       const answer = res.data.answer
       setAnswer(answer)
@@ -161,33 +159,33 @@ const App = ({ darkMode, setDarkMode }) => {
     } catch (err) {
       handleAxiosError(err)
     } finally {
-      setLoading(false)
+      setLoadingChat(false)
     }
   }
 
   const summarizeCase = async () => {
     try {
-      setLoading(true)
+      setLoadingSummary(true)
       const res = await api.summarizeCase()
       setSummary(res.data.summary)
       showMessage('success', '📝 Case summarized.')
     } catch (err) {
       handleAxiosError(err)
     } finally {
-      setLoading(false)
+      setLoadingSummary(false)
     }
   }
 
   const detectFlaws = async () => {
     try {
-      setLoading(true)
+      setLoadingSummary(true)
       const res = await api.detectLegalFlaws()
       setFlaws(res.data.flaws)
       showMessage('info', '🔍 Flaws detected.')
     } catch (err) {
       handleAxiosError(err)
     } finally {
-      setLoading(false)
+      setLoadingSummary(false)
     }
   }
 
@@ -220,7 +218,7 @@ const App = ({ darkMode, setDarkMode }) => {
 
   const loadDraftFromHistory = useCallback(async (id) => {
     try {
-      setLoading(true)
+      setLoadingDraft(true)
       const res = await api.getDraft(id)
       setDraft(res.data.draft)
       setDraftType(res.data.draftType)
@@ -228,7 +226,7 @@ const App = ({ darkMode, setDarkMode }) => {
     } catch (err) {
       handleAxiosError(err)
     } finally {
-      setLoading(false)
+      setLoadingDraft(false)
     }
   }, [handleAxiosError, showMessage])
 
@@ -255,7 +253,7 @@ const App = ({ darkMode, setDarkMode }) => {
       <Container maxWidth="md" sx={{ mt: 4, mb: 10 }}>
         <Paper elevation={3} sx={{ p: 3, borderRadius: 3, bgcolor: theme.palette.background.paper }}>
           <UploadSection
-            loading={loading}
+            loading={loadingUpload}
             handleFileChange={handleFileChange}
             uploadFile={uploadFile}
             draftType={draftType}
@@ -270,7 +268,7 @@ const App = ({ darkMode, setDarkMode }) => {
 
         <SummarySection
           isParsed={isParsed}
-          loading={loading}
+          loading={loadingSummary}
           summarizeCase={summarizeCase}
           summary={summary}
           detectFlaws={detectFlaws}
@@ -283,7 +281,7 @@ const App = ({ darkMode, setDarkMode }) => {
           draft={draft}
           setDraft={setDraft}
           downloadElegantPDF={downloadElegantPDF}
-          loading={loading}
+          loading={loadingDraft}
           darkMode={darkMode}
           ref={draftRef}
         />
@@ -293,7 +291,7 @@ const App = ({ darkMode, setDarkMode }) => {
           question={question}
           setQuestion={setQuestion}
           askCaseQuestion={askCaseQuestion}
-          loading={loading}
+          loading={loadingChat}
           darkMode={darkMode}
         />
 
@@ -302,6 +300,7 @@ const App = ({ darkMode, setDarkMode }) => {
           <Button size="small" onClick={() => setSortDesc(prev => !prev)} sx={{ mb: 2 }}>
             Sort: {sortDesc ? 'Newest First 🔽' : 'Oldest First 🔼'}
           </Button>
+
           <DraftHistoryList
             history={history}
             answer={answer}
