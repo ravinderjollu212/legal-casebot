@@ -1,14 +1,25 @@
-import { Box, Typography, LinearProgress, Paper, Divider } from '@mui/material'
-import MergedUpload from './MergedUpload'
+import {
+    Box,
+    Typography,
+    Paper,
+    LinearProgress,
+    Divider,
+    useTheme
+} from '@mui/material'
 import FilePreview from './FilePreview'
+import MergedUpload from './MergedUpload'
 
 const UploadSection = ({
     loadingUpload,
     handleFileChange,
     uploadFile,
     files = [],
-    combinedPreview
+    combinedPreview,
+    setFiles,
+    setCombinedPreview
 }) => {
+    const theme = useTheme()
+
     const fileLabel =
         files.length > 0
             ? `${files.length} file${files.length > 1 ? 's' : ''} selected`
@@ -17,20 +28,14 @@ const UploadSection = ({
     return (
         <Box>
             <Paper
-                elevation={4}
+                variant="outlined"
                 sx={{
-                    p: 4,
-                    borderRadius: 4,
-                    mb: 6,
+                    p: 3,
+                    borderRadius: 2,
+                    mb: 4,
                     position: 'relative',
-                    bgcolor: theme =>
-                        theme.palette.mode === 'dark' ? '#1e1e1e' : '#ffffff',
-                    border: '1px solid',
-                    borderColor: theme => theme.palette.divider,
-                    boxShadow: theme =>
-                        theme.palette.mode === 'dark'
-                            ? '0 2px 12px rgba(255,255,255,0.05)'
-                            : '0 2px 12px rgba(0,0,0,0.05)',
+                    bgcolor: theme.palette.background.paper,
+                    borderColor: theme.palette.divider,
                     transition: 'all 0.3s ease'
                 }}
             >
@@ -47,16 +52,11 @@ const UploadSection = ({
                     />
                 )}
 
-                <Typography
-                    variant="h5"
-                    fontWeight={600}
-                    sx={{
-                        color: theme => theme.palette.primary.main,
-                        mb: 1
-                    }}
-                >
-                    📤 Upload Case Files
-                </Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Typography variant="h6" fontWeight={600}>
+                        📤 Upload Case Files
+                    </Typography>
+                </Box>
 
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                     Upload PDF, DOCX, or image files related to the case. Drag & drop is supported.
@@ -66,6 +66,8 @@ const UploadSection = ({
                     loading={loadingUpload}
                     handleFileChange={handleFileChange}
                     uploadFile={uploadFile}
+                    setFiles={setFiles}
+                    setCombinedPreview={setCombinedPreview}
                 />
 
                 <Typography
