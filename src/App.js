@@ -262,7 +262,7 @@ const App = ({ darkMode, setDarkMode }) => {
     <>
       <HeaderBar darkMode={darkMode} toggleDarkMode={() => setDarkMode(!darkMode)} />
 
-      <Container maxWidth="md" sx={{ mt: 4, mb: 10 }}>
+      <Container maxWidth="lg" sx={{ mt: 5, mb: 10 }}>
         <Paper elevation={3} sx={{ p: 3, borderRadius: 3, bgcolor: theme.palette.background.paper }}>
           <UploadSection
             loadingUpload={loadingUpload}
@@ -276,6 +276,8 @@ const App = ({ darkMode, setDarkMode }) => {
             generateDraft={generateDraft}
             isParsed={isParsed}
             files={files}
+            setFiles={setFiles}                       // 👈 Add this
+            setCombinedPreview={setCombinedPreview}
           />
         </Paper>
 
@@ -319,7 +321,9 @@ const App = ({ darkMode, setDarkMode }) => {
         />
 
         <Box mt={6}>
-          <Typography variant="h6" gutterBottom>📚 Saved Draft History</Typography>
+          <Typography variant="h6" fontWeight={600} gutterBottom>
+            📚 Saved Draft History
+          </Typography>
           <Button size="small" onClick={() => setSortDesc(prev => !prev)} sx={{ mb: 2 }}>
             Sort: {sortDesc ? 'Newest First 🔽' : 'Oldest First 🔼'}
           </Button>

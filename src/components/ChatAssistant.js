@@ -35,8 +35,7 @@ const ChatAssistant = ({
       return
     }
 
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     const recognition = new SpeechRecognition()
 
     recognition.lang = 'en-IN'
@@ -47,7 +46,7 @@ const ChatAssistant = ({
 
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript
-      setQuestion((prev) => (prev ? `${prev} ${transcript}` : transcript))
+      setQuestion(prev => (prev ? `${prev} ${transcript}` : transcript))
     }
 
     recognition.onerror = (event) => {
@@ -67,14 +66,23 @@ const ChatAssistant = ({
 
   return (
     <Box mt={6}>
-      <Typography variant="h5" gutterBottom>
+      <Typography variant="h5" fontWeight={600} gutterBottom>
         💬 Case Assistant
       </Typography>
 
-      <Paper elevation={3} sx={{ p: 2, borderRadius: 2 }}>
+      <Paper
+        elevation={3}
+        sx={{
+          p: 3,
+          borderRadius: 4,
+          bgcolor: theme => darkMode ? '#1e1e1e' : '#fafafa',
+          border: '1px solid',
+          borderColor: theme => darkMode ? '#444' : '#ddd'
+        }}
+      >
         <Box display="flex" gap={2} flexDirection={{ xs: 'column', sm: 'row' }}>
           <TextField
-            label="Ask a question"
+            label="Ask a legal question"
             fullWidth
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
@@ -82,14 +90,20 @@ const ChatAssistant = ({
             multiline
             minRows={1}
             maxRows={4}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                bgcolor: darkMode ? '#2c2c2c' : '#fff'
+              }
+            }}
           />
 
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box display="flex" alignItems="center" gap={1} flexShrink={0}>
             <Button
               variant="contained"
               color="secondary"
               onClick={askCaseQuestion}
               disabled={loading || !question.trim()}
+              sx={{ minWidth: 100 }}
             >
               Ask
             </Button>
@@ -105,24 +119,25 @@ const ChatAssistant = ({
         </Box>
 
         {chatHistory.length > 0 && (
-          <Box mt={3}>
+          <Box mt={4}>
             <Typography
               variant="subtitle1"
+              fontWeight={600}
               gutterBottom
-              sx={{ color: darkMode ? '#ddd' : undefined }}
+              sx={{ color: darkMode ? '#ccc' : '#444' }}
             >
-              🧠 AI Responses:
+              🧠 AI Conversation
             </Typography>
+
             <Box
               sx={{
-                maxHeight: 300,
+                maxHeight: 320,
                 overflowY: 'auto',
                 p: 2,
-                backgroundColor: darkMode ? '#2a2a2a' : '#f9f9f9',
-                color: darkMode ? '#eee' : '#000',
-                borderRadius: 1,
+                backgroundColor: darkMode ? '#2a2a2a' : '#f4f4f4',
+                borderRadius: 2,
                 border: '1px solid',
-                borderColor: darkMode ? '#444' : '#ddd',
+                borderColor: darkMode ? '#444' : '#ccc',
                 fontSize: 14
               }}
             >
@@ -131,10 +146,13 @@ const ChatAssistant = ({
                   <Typography
                     fontWeight="bold"
                     color={msg.role === 'user' ? 'primary' : 'secondary'}
+                    gutterBottom
                   >
                     {msg.role === 'user' ? '👤 You:' : '🤖 AI:'}
                   </Typography>
-                  <Typography whiteSpace="pre-wrap">{msg.content}</Typography>
+                  <Typography whiteSpace="pre-wrap">
+                    {msg.content}
+                  </Typography>
                 </Box>
               ))}
             </Box>

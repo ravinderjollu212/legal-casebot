@@ -1,8 +1,37 @@
-import { Box, Typography, useTheme, Paper, CircularProgress } from '@mui/material'
+import {
+  Box,
+  Typography,
+  useTheme,
+  Paper,
+  Skeleton
+} from '@mui/material'
 
 const FilePreview = ({ content, loading }) => {
   const theme = useTheme()
   const isDark = theme.palette.mode === 'dark'
+
+  const renderEnhancedPlaceholder = () => (
+    <Box>
+      {Array.from({ length: 3 }).map((_, blockIdx) => (
+        <Box key={blockIdx} mb={2}>
+          {Array.from({ length: 4 }).map((_, lineIdx) => (
+            <Skeleton
+              key={lineIdx}
+              variant="text"
+              animation="wave"
+              height={18}
+              width={`${80 - lineIdx * 5}%`}
+              sx={{
+                bgcolor: isDark ? '#333' : '#e0e0e0',
+                mb: 1,
+                borderRadius: 1
+              }}
+            />
+          ))}
+        </Box>
+      ))}
+    </Box>
+  )
 
   return (
     <Box mt={5}>
@@ -20,7 +49,7 @@ const FilePreview = ({ content, loading }) => {
       </Typography>
 
       <Paper
-        elevation={0}
+        elevation={1}
         sx={{
           backgroundColor: isDark ? '#101418' : '#ffffff',
           border: `1px solid ${isDark ? '#2a2a2a' : '#e0e0e0'}`,
@@ -28,20 +57,12 @@ const FilePreview = ({ content, loading }) => {
           p: 3,
           maxHeight: 320,
           overflowY: 'auto',
-          boxShadow: isDark ? '0 0 0 1px #2a2a2a' : '0 0 0 1px #f0f0f0',
+          boxShadow: isDark ? '0 0 2px #333' : '0 0 3px #ccc',
           transition: 'all 0.3s ease-in-out'
         }}
       >
         {loading ? (
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            minHeight={200}
-            sx={{ opacity: 0.6 }}
-          >
-            <CircularProgress size={28} />
-          </Box>
+          renderEnhancedPlaceholder()
         ) : content ? (
           <Typography
             component="pre"

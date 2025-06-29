@@ -1,9 +1,14 @@
 import React, { useRef } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { Box, Typography, Button, CircularProgress, useTheme } from '@mui/material'
+import {
+  Box,
+  Typography,
+  Button,
+  CircularProgress,
+  useTheme
+} from '@mui/material'
 
 const MergedUpload = ({ loading, handleFileChange, uploadFile }) => {
-  console.log('loading', loading )
   const theme = useTheme()
   const inputRef = useRef()
 
@@ -12,32 +17,44 @@ const MergedUpload = ({ loading, handleFileChange, uploadFile }) => {
     if (selected.length > 0) handleFileChange(selected)
   }
 
-  const { getRootProps, getInputProps } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { 'application/*': ['.pdf', '.docx', '.txt'] },
     onDrop: onFilesSelected,
     noClick: true
   })
 
   return (
-    <Box sx={{ my: 3 }}>
+    <Box sx={{ my: 4 }}>
       <Box
         {...getRootProps()}
         sx={{
           border: '2px dashed',
-          borderColor: theme.palette.mode === 'dark' ? '#888' : '#aaa',
-          backgroundColor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#fafafa',
-          color: theme.palette.mode === 'dark' ? '#fff' : '#000',
-          padding: 4,
+          borderColor: isDragActive ? theme.palette.primary.main : theme.palette.divider,
+          backgroundColor: isDragActive
+            ? theme.palette.action.hover
+            : theme.palette.mode === 'dark'
+              ? '#1e1e1e'
+              : '#f9f9f9',
+          color: theme.palette.text.primary,
+          p: 5,
           textAlign: 'center',
-          borderRadius: 2,
+          borderRadius: 3,
           cursor: 'pointer',
-          transition: 'background 0.3s ease'
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            backgroundColor: theme.palette.action.hover,
+            borderColor: theme.palette.primary.main
+          }
         }}
         onClick={() => inputRef.current?.click()}
       >
-        <Typography>
-          📂 Drag & drop a document here, or click to upload
+        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+          📂 Drag & drop documents here, or <u>click to upload</u>
         </Typography>
+        <Typography variant="caption" color="text.secondary">
+          Supported: .pdf, .docx, .txt
+        </Typography>
+
         <input
           {...getInputProps()}
           ref={inputRef}
@@ -45,9 +62,15 @@ const MergedUpload = ({ loading, handleFileChange, uploadFile }) => {
         />
       </Box>
 
-      <Box display="flex" alignItems="center" gap={2} mt={2}>
-        <Button variant="contained" onClick={uploadFile} disabled={loading}>
-          {loading ? <CircularProgress size={20} /> : 'Upload & Parse'}
+      <Box display="flex" alignItems="center" justifyContent="flex-end" mt={3}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={uploadFile}
+          disabled={loading}
+          startIcon={loading ? <CircularProgress size={18} color="inherit" /> : null}
+        >
+          {loading ? 'Uploading...' : 'Upload & Parse'}
         </Button>
       </Box>
     </Box>
